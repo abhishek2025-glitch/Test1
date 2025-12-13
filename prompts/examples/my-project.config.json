@@ -1,0 +1,9 @@
+{
+  "repoName": "multi-agent-github-orchestrator",
+  "visibility": "public",
+  "description": "Multi-agent AI system orchestrating GitHub Actions and automation workflows",
+  "topics": ["ai", "multi-agent", "automation", "github-actions", "workflow-automation"],
+  "autoValidate": true,
+  "author": "your-username",
+  "license": "MIT"
+}

@@ -1,0 +1,121 @@
+Build a sophisticated multi-agent AI system that coordinates autonomous AI agents for GitHub Actions automation and workflow management.
+
+## Core Features
+
+### Multi-Agent Orchestration
+- **Agent Coordination**: Multiple AI agents working together seamlessly
+- **Task Distribution**: Intelligent task assignment based on agent capabilities
+- **Communication Protocol**: Standardized messaging between agents
+- **State Management**: Shared state and memory across all agents
+
+### GitHub Actions Integration
+- **Workflow Triggers**: Automatically trigger workflows based on repository events
+- **Custom Actions**: Generate custom GitHub Actions for specific use cases
+- **CI/CD Automation**: Full continuous integration and deployment pipelines
+- **Quality Gates**: Automated testing, linting, and quality checks
+
+### Repository Management
+- **Auto-Repository Creation**: Create repositories with proper structure
+- **Branch Management**: Automated branching strategies
+- **Pull Request Automation**: Generate, review, and merge PRs automatically
+- **Issue Management**: Automated issue tracking and resolution
+
+### Code Quality & Testing
+- **Test Generation**: Automatically generate comprehensive test suites
+- **Code Analysis**: Static analysis and security scanning
+- **Performance Monitoring**: Track performance metrics and optimization
+- **Documentation**: Auto-generate documentation from code
+
+### Deployment & Operations
+- **Multi-Environment Support**: Dev, staging, production environments
+- **Infrastructure as Code**: Terraform/CloudFormation templates
+- **Monitoring & Alerting**: Comprehensive monitoring and alerting
+- **Rollback Mechanisms**: Automated rollback on failures
+
+## Technical Requirements
+
+### Architecture
+- **Microservices**: Modular, independently deployable services
+- **Event-Driven**: Event-driven architecture for loose coupling
+- **API-First**: RESTful APIs with comprehensive OpenAPI documentation
+- **Scalable**: Horizontal and vertical scaling capabilities
+
+### Security
+- **Authentication**: OAuth2, JWT tokens, API key management
+- **Authorization**: Role-based access control (RBAC)
+- **Encryption**: End-to-end encryption for sensitive data
+- **Audit Logging**: Comprehensive audit trails
+
+### Performance
+- **Caching**: Multi-level caching (Redis, in-memory)
+- **Load Balancing**: Automatic load balancing and failover
+- **Database Optimization**: Query optimization and connection pooling
+- **CDN Integration**: Content delivery network for static assets
+
+## Agent Types
+
+### 1. Code Generation Agent
+- Generates production-ready code based on specifications
+- Supports multiple programming languages and frameworks
+- Implements best practices and design patterns
+- Creates comprehensive documentation
+
+### 2. Testing Agent
+- Generates unit, integration, and end-to-end tests
+- Implements property-based and fuzz testing
+- Performance and load testing scenarios
+- Security testing and vulnerability assessment
+
+### 3. DevOps Agent
+- Infrastructure provisioning and management
+- CI/CD pipeline creation and optimization
+- Monitoring and alerting setup
+- Security and compliance automation
+
+### 4. Documentation Agent
+- API documentation from code
+- User guides and tutorials
+- Architecture diagrams and flowcharts
+- Code comments and inline documentation
+
+### 5. Quality Assurance Agent
+- Code review and analysis
+- Performance optimization suggestions
+- Security vulnerability scanning
+- Dependency analysis and updates
+
+## Integration Points
+
+### GitHub API
+- Repository operations (create, update, delete)
+- Branch and tag management
+- Issue and pull request automation
+- Release and deployment management
+
+### External Services
+- Cloud providers (AWS, GCP, Azure)
+- Monitoring services (DataDog, New Relic)
+- Communication tools (Slack, Discord)
+- Project management (Jira, Linear)
+
+## Success Metrics
+
+### Development Velocity
+- 10x faster project initialization
+- 90% reduction in boilerplate code
+- Automated testing coverage >80%
+- Zero configuration deployment
+
+### Code Quality
+- Zero critical security vulnerabilities
+- Performance benchmarks within SLA
+- Comprehensive documentation coverage
+- Automated dependency updates
+
+### Operational Excellence
+- 99.9% uptime availability
+- Sub-second response times
+- Automated incident response
+- Complete audit trail
+
+Build this as a production-ready, enterprise-grade system with proper logging, monitoring, testing, and documentation. Include deployment configurations for major cloud providers and make it easily extensible for future enhancements.
