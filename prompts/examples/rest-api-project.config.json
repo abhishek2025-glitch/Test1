@@ -1,0 +1,9 @@
+{
+  "repoName": "fastapi-task-manager",
+  "visibility": "public",
+  "description": "Modern REST API for task management with FastAPI",
+  "topics": ["api", "fastapi", "python", "task-manager", "rest"],
+  "autoValidate": true,
+  "author": "your-username",
+  "license": "MIT"
+}

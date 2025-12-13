@@ -1,0 +1,341 @@
+name: AI Code Generator from Config
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'prompts/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'prompts/**'
+
+jobs:
+  detect-and-generate:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    
+    outputs:
+      has-configs: ${{ steps.detect.outputs.has-configs }}
+      config-files: ${{ steps.detect.outputs.config-files }}
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Detect configuration files
+      id: detect
+      run: |
+        echo "🔍 Scanning for configuration files in prompts/ directory..."
+        
+        python -c "
+        import sys
+        import os
+        import json
+        from pathlib import Path
+        sys.path.append('src')
+        from config_parser import ConfigParser
+        
+        parser = ConfigParser()
+        config_files = []
+        
+        prompts_dir = Path('prompts')
+        if not prompts_dir.exists():
+            print('❌ No prompts/ directory found')
+            sys.exit(0)
+        
+        try:
+            files = parser.find_prompt_files('prompts')
+            print(f'📁 Found {len(files)} configuration file(s)')
+            
+            for config_path, prompt_path, file_type in files:
+                validation = parser.validate_config_file(config_path)
+                if validation['valid']:
+                    config_files.append(config_path)
+                    print(f'✅ {config_path} (type: {file_type})')
+                else:
+                    print(f'❌ {config_path} - Invalid: {validation[\"errors\"]}')
+            
+            print(f'\\n✅ Valid configuration files: {len(config_files)}')
+            print(f'❌ Invalid configuration files: {len(files) - len(config_files)}')
+            
+            # Set outputs
+            import os
+            if config_files:
+                print(f'::set-output name=has-configs::true')
+                config_list = ','.join(config_files)
+                print(f'::set-output name=config-files::{config_list}')
+            else:
+                print(f'::set-output name=has-configs::false')
+                print(f'::set-output name=config-files::')
+                
+        except Exception as e:
+            print(f'❌ Error scanning files: {e}')
+            print(f'::set-output name=has-configs::false')
+            print(f'::set-output name=config-files::')
+        "
+        
+    - name: Check if configurations found
+      if: steps.detect.outputs.has-configs == 'false'
+      run: |
+        echo "ℹ️ No valid configuration files found. Exiting."
+        
+  process-configs:
+    needs: detect-and-generate
+    runs-on: ubuntu-latest
+    if: needs.detect-and-generate.outputs.has-configs == 'true'
+    
+    strategy:
+      fail-fast: false
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Parse and generate project
+      id: generate-project
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "🚀 Processing configuration files..."
+        
+        python -c "
+        import sys
+        import os
+        import json
+        import time
+        from pathlib import Path
+        sys.path.append('src')
+        from config_parser import ConfigParser
+        from repo_validator import RepositoryValidator
+        from topics_manager import TopicsManager
+        from main import AICodeGenerator
+        
+        # Get config files from environment
+        config_files = os.getenv('CONFIG_FILES', '').split(',')
+        config_files = [f.strip() for f in config_files if f.strip()]
+        
+        print(f'📋 Processing {len(config_files)} configuration file(s)')
+        
+        # Process each configuration
+        for i, config_file in enumerate(config_files):
+            print(f'\\n🔧 Processing configuration {i+1}/{len(config_files)}: {config_file}')
+            
+            try:
+                # Parse configuration
+                parser = ConfigParser()
+                config = parser.parse_project_config(config_file)
+                
+                print(f'  ✅ Configuration parsed')
+                print(f'     - Repository: {config.repo_name}')
+                print(f'     - Visibility: {config.visibility}')
+                print(f'     - Topics: {len(config.topics) if config.topics else 0}')
+                print(f'     - Prompt length: {len(config.prompt):,} characters')
+                
+                # Validate repository name
+                validator = RepositoryValidator()
+                validation_result = validator.validate_repo_name(config.repo_name)
+                
+                print(f'  🔍 Repository validation: {validation_result[\"status\"]}')
+                
+                # Generate topics if not provided
+                topics_manager = TopicsManager()
+                if not config.topics:
+                    print(f'  🏷️  Generating topics...')
+                    config.topics = topics_manager.generate_topics(
+                        config.description, 
+                        auto_detect=True
+                    )
+                    print(f'     Generated topics: {config.topics}')
+                
+                # Prepare generation parameters
+                generation_params = {
+                    'description': config.prompt,
+                    'repo_name': config.repo_name,
+                    'repo_description': config.description,
+                    'is_private': config.visibility == 'private',
+                    'license_type': config.license,
+                    'skip_github': False  # Actually create the repo
+                }
+                
+                print(f'  🚀 Starting code generation...')
+                
+                # Generate the project
+                generator = AICodeGenerator()
+                result = generator.generate(**generation_params)
+                
+                if result['success']:
+                    print(f'  ✅ Project generated successfully!')
+                    print(f'     - Repository: {result[\"repo_info\"][\"url\"]}')
+                    print(f'     - Files: {result[\"file_count\"]}')
+                    print(f'     - Tests: {result[\"test_count\"]}')
+                    
+                    # Save results to file for artifacts
+                    base_name = Path(config_file).stem
+                    if base_name.endswith('.config'):
+                        base_name = base_name[:-7]
+                    
+                    with open(f'generation_result_{i}.json', 'w') as f:
+                        json.dump(result, f, indent=2, default=str)
+                    
+                    # Save validation and suggestions if any
+                    if validation_result.get('suggestions'):
+                        with open(f'repo_suggestions_{i}.json', 'w') as f:
+                            json.dump({
+                                'original_name': config.repo_name,
+                                'validation': validation_result,
+                                'final_repo_name': result['repo_info']['name'],
+                                'suggestions': validation_result['suggestions'][:3]  # Top 3 suggestions
+                            }, f, indent=2, default=str)
+                else:
+                    print(f'  ❌ Generation failed: {result[\"error\"]}')
+                    
+            except Exception as e:
+                print(f'  ❌ Error processing configuration: {e}')
+                import traceback
+                traceback.print_exc()
+        
+        print(f'\\n📊 Processing completed')
+        "
+      
+    - name: Upload generation artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: generation-results
+        path: |
+          generation_result_*.json
+          repo_suggestions_*.json
+        retention-days: 7
+        
+    - name: Create Pull Request
+      if: success()
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        branch: generated/ai-code-${{ github.sha }}
+        title: "🤖 Generated projects from configuration files"
+        body: |
+          ## 🤖 AI-Generated Projects Summary
+          
+          This PR contains the results of processing configuration files from the `prompts/` directory.
+          
+          ### 📊 Generation Summary
+          - **Configuration files processed**: Multiple
+          - **Status**: Generated successfully
+          - **Timestamp**: {{ now }}
+          
+          ### 🔗 Generated Repositories
+          Repository links and details are available in the workflow artifacts.
+          
+          ### 📁 Configuration Files Processed
+          ```bash
+          ${{ needs.detect-and-generate.outputs.config-files }}
+          ```
+          
+          ### 📝 Generated by
+          [GitHub Actions AI Code Generator](https://github.com/${{ github.repository }}/actions/workflows/generate-from-config.yml)
+          
+          ---
+          *Generated by GitHub Actions AI Code Generator*
+        commit-message: "🤖 Generate projects from configuration files"
+        author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
+        committer: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
+
+  summary:
+    needs: [detect-and-generate, process-configs]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: generation-results
+        path: results/
+        
+    - name: Generate summary report
+      run: |
+        echo "# 🎯 AI Code Generation Summary" > summary_report.md
+        echo "" >> summary_report.md
+        echo "**Trigger**: Configuration file change in \`prompts/\` directory" >> summary_report.md
+        echo "**Time**: $(date -u)" >> summary_report.md
+        echo "" >> summary_report.md
+        
+        # Process generation results
+        echo "## 📊 Generation Results" >> summary_report.md
+        echo "" >> summary_report.md
+        
+        result_files = $(find results/ -name "generation_result_*.json" 2>/dev/null | wc -l)
+        
+        if [ "$result_files" -gt 0 ]; then
+          echo "✅ **Successful generations**: $result_files" >> summary_report.md
+          echo "" >> summary_report.md
+          
+          echo "### 🚀 Generated Repositories" >> summary_report.md
+          echo "" >> summary_report.md
+          echo "| Repository | Status | Files | Tests |" >> summary_report.md
+          echo "|------------|--------|-------|-------|" >> summary_report.md
+          
+          for result_file in results/generation_result_*.json; do
+            if [ -f "$result_file" ]; then
+              repo_name=$(jq -r '.repo_info.name // "Unknown"' "$result_file")
+              repo_url=$(jq -r '.repo_info.url // "N/A"' "$result_file")
+              file_count=$(jq -r '.file_count // 0' "$result_file")
+              test_count=$(jq -r '.test_count // 0' "$result_file")
+              
+              echo "| [$repo_name]($repo_url) | ✅ Generated | $file_count | $test_count |" >> summary_report.md
+            fi
+          done
+          
+          echo "" >> summary_report.md
+          echo "**Total repositories generated**: $result_files" >> summary_report.md
+        else
+          echo "❌ **No successful generations**" >> summary_report.md
+        fi
+        
+        echo "" >> summary_report.md
+        echo "---" >> summary_report.md
+        echo "*Generated by [GitHub Actions](https://github.com/${{ github.repository }}/actions)*" >> summary_report.md
+        
+        # Output the summary
+        echo "📊 Summary Report:"
+        cat summary_report.md
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('summary_report.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });

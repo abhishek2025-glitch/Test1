@@ -1,0 +1,65 @@
+Build a modern REST API for a task management application using FastAPI with the following specifications:
+
+## Core Features
+
+### User Management
+- User registration and authentication
+- JWT token-based security
+- Password hashing and validation
+- User profile management
+- Role-based access control
+
+### Task Operations
+- CRUD operations for tasks
+- Task categorization and tagging
+- Priority levels and due dates
+- Status tracking (pending, in-progress, completed)
+- Task assignment and collaboration
+
+### API Features
+- RESTful API design
+- OpenAPI/Swagger documentation
+- Input validation with Pydantic models
+- Error handling and status codes
+- Rate limiting and throttling
+- API versioning support
+
+### Database Integration
+- SQLAlchemy ORM integration
+- PostgreSQL database support
+- Database migrations with Alembic
+- Connection pooling and optimization
+- Transaction management
+
+### Additional Features
+- Email notifications
+- File attachments support
+- Search and filtering
+- Pagination for large datasets
+- API response caching
+- Health check endpoints
+
+## Technical Requirements
+
+### Performance
+- Async/await support
+- Database query optimization
+- Redis caching integration
+- Background task processing
+- Monitoring and metrics
+
+### Security
+- HTTPS enforcement
+- CORS configuration
+- Input sanitization
+- SQL injection prevention
+- Rate limiting
+
+### Documentation
+- Comprehensive API docs
+- Code examples and tutorials
+- Deployment guides
+- Architecture diagrams
+- API testing examples
+
+Build this as a production-ready application with proper testing, logging, and deployment configurations.
