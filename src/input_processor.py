@@ -103,7 +103,7 @@ class InputProcessor:
                 "rest",
             ],
             "mobile": ["mobile", "ios", "android", "app", "native"],
-            "cli": ["cli", "command-line", "terminal", "tool", "script"],
+            "cli": ["cli", "command-line", "command line", "terminal", "tool", "script"],
             "data": [
                 "data",
                 "analytics",
@@ -116,7 +116,11 @@ class InputProcessor:
         }
 
         for category, words in keyword_map.items():
-            if any(word in description_lower for word in words):
-                keywords.append(category)
+            # Use word boundaries to avoid partial matches
+            import re
+            for word in words:
+                if re.search(r'\b' + re.escape(word) + r'\b', description_lower):
+                    keywords.append(category)
+                    break
 
         return keywords

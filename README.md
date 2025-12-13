@@ -2,7 +2,7 @@
 
 🚀 **Generate production-ready code from natural language descriptions and automatically push to GitHub!**
 
-An intelligent AI-powered code generation system that transforms project descriptions into fully functional, tested, and documented code repositories. The system automatically creates GitHub repositories, generates clean architecture code, runs quality checks, and pushes everything with proper CI/CD configuration.
+An intelligent AI-powered code generation system that uses OpenRouter API with DeepSeek and other LLMs to transform project descriptions into fully functional, tested, and documented code repositories. The system supports both AI-powered generation and template-based fallback, automatically creates GitHub repositories, generates clean architecture code, runs quality checks, and pushes everything with proper CI/CD configuration.
 
 ## ✨ Features
 
@@ -19,6 +19,7 @@ An intelligent AI-powered code generation system that transforms project descrip
 ## 📋 Requirements
 
 - Python 3.9+
+- OpenRouter API Key (optional, enables AI-powered generation)
 - GitHub Personal Access Token (with `repo` scope)
 - Git installed locally
 
@@ -41,14 +42,20 @@ pip install -r requirements.txt
 
 ### 2. Configuration
 
-Create a `.env` file with your GitHub token:
+Create a `.env` file with your API keys:
 
 ```bash
 cp .env.example .env
-# Edit .env and add your GitHub token
+# Edit .env and add your API keys
 ```
 
-Generate a GitHub Personal Access Token:
+**Get OpenRouter API Key (optional, for AI generation):**
+1. Go to https://openrouter.ai/keys
+2. Create an account and generate an API key
+3. Copy the key to your `.env` file as `OPENROUTER_API_KEY`
+4. Choose your preferred model (defaults to `deepseek/deepseek-chat`)
+
+**Get GitHub Personal Access Token (required):**
 1. Go to https://github.com/settings/tokens
 2. Click "Generate new token (classic)"
 3. Select scopes: `repo`, `workflow`
@@ -57,8 +64,14 @@ Generate a GitHub Personal Access Token:
 ### 3. Generate Your First Project
 
 ```bash
-# Basic usage
+# Basic usage (template-based)
 python -m src.main -d "Build a REST API for todo management"
+
+# With OpenRouter AI generation (requires OPENROUTER_API_KEY)
+python -m src.main -d "Build a REST API for todo management" --llm-model deepseek/deepseek-chat
+
+# With specific LLM model
+python -m src.main -d "Build a web API" --llm-model anthropic/claude-3-opus
 
 # With specific tech stack
 python -m src.main -d "Build a REST API" -t "python-fastapi"
@@ -71,6 +84,9 @@ python -m src.main -d "Build a CLI tool" -n "my-awesome-cli"
 
 # Private repository
 python -m src.main -d "Build an API" --private
+
+# Template-only mode (no AI)
+python -m src.main -d "Build a CLI tool" --no-ai
 ```
 
 ## 🎯 Supported Tech Stacks
@@ -137,6 +153,53 @@ python -m src.main \
 - Setup.py for installation
 - Tests and documentation
 
+## 🤖 AI-Powered Code Generation
+
+The system now supports AI-powered code generation using OpenRouter API with multiple LLM models:
+
+### Available LLM Models
+
+| Model | Use Case | Cost | Quality |
+|-------|----------|------|---------|
+| **deepseek/deepseek-chat** (default) | General code generation | Low | Good |
+| **deepseek/deepseek-coder** | Specialized code generation | Low | Very Good |
+| **anthropic/claude-3-opus** | Premium quality generation | High | Excellent |
+| **openai/gpt-4** | Premium general purpose | High | Excellent |
+| **meta-llama/llama-2-70b-chat** | Open source alternative | Low | Good |
+
+### AI Generation Features
+
+- **Natural Language Processing**: Converts project descriptions into structured code
+- **Context Awareness**: Understands tech stack requirements and features
+- **Code Quality**: Generates production-ready, well-documented code
+- **Fallback System**: Automatically falls back to templates if AI fails
+- **Rate Limiting**: Handles API limits with retry logic
+- **Cost Effective**: Uses cost-effective DeepSeek models by default
+
+### Environment Variables
+
+```bash
+# Required for AI generation
+OPENROUTER_API_KEY=sk-or-...
+
+# Optional model selection (defaults to deepseek/deepseek-chat)
+LLM_MODEL=deepseek/deepseek-coder
+
+# Legacy OpenAI key (will show warning to migrate)
+OPENAI_API_KEY=sk-...  # ⚠️ Deprecated
+```
+
+### Cost Comparison
+
+| Model | Cost per 1K tokens | Monthly cost estimate* |
+|-------|-------------------|----------------------|
+| deepseek/deepseek-chat | ~$0.0014 | $5-15 |
+| deepseek/deepseek-coder | ~$0.0014 | $5-15 |
+| anthropic/claude-3-opus | ~$0.015 | $50-150 |
+| openai/gpt-4 | ~$0.03 | $100-300 |
+
+*Based on typical usage patterns for code generation
+
 ## 🔧 Command-Line Options
 
 ```
@@ -149,6 +212,8 @@ Options:
   --private                    Make repository private
   --license TEXT               License type (default: MIT)
   --skip-github                Skip GitHub operations (for testing)
+  --llm-model TEXT             LLM model to use (default: deepseek/deepseek-chat)
+  --no-ai                      Use template-based generation only (no AI)
   --help                       Show this message and exit
 ```
 
@@ -161,15 +226,18 @@ ai-code-generator/
 │   ├── input_processor.py         # Input validation and parsing
 │   ├── tech_stack_selector.py     # Intelligent stack selection
 │   ├── architecture_planner.py    # Project structure planning
-│   ├── code_generator.py          # Code generation engine
+│   ├── code_generator.py          # Template-based code generation engine
+│   ├── ai_code_generator.py       # AI-powered code generation using OpenRouter
 │   ├── quality_assurance.py       # Quality checks and validation
 │   ├── github_integration.py      # GitHub API operations
 │   ├── git_operations.py          # Local git operations
 │   └── response_formatter.py      # Output formatting
 ├── tests/                         # Comprehensive test suite
-├── templates/                     # Code templates (future)
+│   ├── test_ai_code_generator.py  # AI generator tests (new)
+│   └── ...                        # Other test files
+├── templates/                     # Code templates (fallback system)
 ├── generated_projects/            # Output directory (gitignored)
-└── requirements.txt               # Python dependencies
+└── requirements.txt               # Python dependencies (includes httpx)
 ```
 
 ## 🧪 Testing
