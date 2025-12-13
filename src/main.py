@@ -1,6 +1,7 @@
 """Main entry point for AI Code Generator."""
 import os
 import sys
+import asyncio
 from typing import Dict, List, Optional
 import click
 from dotenv import load_dotenv
@@ -9,6 +10,7 @@ from src.input_processor import InputProcessor
 from src.tech_stack_selector import TechStackSelector
 from src.architecture_planner import ArchitecturePlanner
 from src.code_generator import CodeGenerator
+from src.ai_code_generator import AICodeGenerator
 from src.quality_assurance import QualityAssurance
 from src.github_integration import GitHubIntegration
 from src.git_operations import GitOperations
@@ -18,7 +20,7 @@ from src.response_formatter import ResponseFormatter
 load_dotenv()
 
 
-class AICodeGenerator:
+class MainCodeGenerator:
     """Main AI Code Generator orchestrator."""
 
     def __init__(self):
@@ -26,10 +28,11 @@ class AICodeGenerator:
         self.tech_stack_selector = TechStackSelector()
         self.architecture_planner = ArchitecturePlanner()
         self.code_generator = CodeGenerator()
+        self.ai_code_generator = None
         self.quality_assurance = QualityAssurance()
         self.response_formatter = ResponseFormatter()
 
-    def generate(
+    async def generate(
         self,
         description: str,
         tech_stack: Optional[str] = None,
@@ -40,6 +43,8 @@ class AICodeGenerator:
         license_type: str = "MIT",
         github_token: Optional[str] = None,
         skip_github: bool = False,
+        llm_model: Optional[str] = None,
+        use_ai: bool = True,
     ) -> Dict:
         """
         Generate complete project and push to GitHub.
@@ -54,11 +59,28 @@ class AICodeGenerator:
             license_type: License type
             github_token: GitHub token (optional, uses env var if not provided)
             skip_github: Skip GitHub creation (for testing)
+            llm_model: LLM model to use for AI generation (optional)
+            use_ai: Whether to use AI generation (falls back to templates if False)
 
         Returns:
             Dict containing generation results
         """
         try:
+            # Initialize AI code generator if needed
+            if use_ai:
+                try:
+                    self.ai_code_generator = AICodeGenerator(model=llm_model)
+                    self.ai_code_generator.set_template_generator(self.code_generator)
+                    click.echo("✅ AI Code Generator initialized successfully")
+                except ValueError as e:
+                    click.echo(f"⚠️  AI Code Generator failed to initialize: {e}")
+                    click.echo("   Falling back to template-based generation")
+                    use_ai = False
+                except Exception as e:
+                    click.echo(f"⚠️  Unexpected error initializing AI generator: {e}")
+                    click.echo("   Falling back to template-based generation")
+                    use_ai = False
+
             click.echo("🚀 Starting AI Code Generator...\n")
 
             click.echo("📝 Step 1/7: Processing input...")
@@ -87,10 +109,16 @@ class AICodeGenerator:
             click.echo(f"   ✓ Planned {len(architecture['files'])} files")
 
             click.echo("\n💻 Step 4/7: Generating code...")
-            files = self.code_generator.generate_project(
-                stack_id, architecture, project_info, dependencies
-            )
-            click.echo(f"   ✓ Generated {len(files)} files")
+            if use_ai and self.ai_code_generator:
+                files = await self.ai_code_generator.generate_code(
+                    description, stack_id, project_info["features"], use_ai=True
+                )
+                click.echo(f"   ✓ Generated {len(files)} files using AI")
+            else:
+                files = self.code_generator.generate_project(
+                    stack_id, architecture, project_info, dependencies
+                )
+                click.echo(f"   ✓ Generated {len(files)} files using templates")
 
             click.echo("\n🔒 Step 5/7: Running quality checks...")
             is_valid, errors = self.quality_assurance.validate_project(files, stack_id)
@@ -221,6 +249,8 @@ class AICodeGenerator:
 @click.option("--private", is_flag=True, help="Make repository private")
 @click.option("--license", default="MIT", help="License type (default: MIT)")
 @click.option("--skip-github", is_flag=True, help="Skip GitHub operations (testing)")
+@click.option("--llm-model", help="LLM model to use (default: deepseek/deepseek-chat)")
+@click.option("--no-ai", is_flag=True, help="Use template-based generation only (no AI)")
 def main(
     description: str,
     tech_stack: Optional[str],
@@ -230,16 +260,20 @@ def main(
     private: bool,
     license: str,
     skip_github: bool,
+    llm_model: Optional[str],
+    no_ai: bool,
 ):
     """
     AI Code Generator - Generate production-ready code and push to GitHub.
 
     Example:
         python -m src.main -d "Build a REST API for todo management" -t "python-fastapi"
+        python -m src.main -d "Build a React app" --llm-model deepseek/deepseek-coder
+        python -m src.main -d "Build a CLI tool" --no-ai
     """
-    generator = AICodeGenerator()
+    generator = MainCodeGenerator()
 
-    result = generator.generate(
+    result = asyncio.run(generator.generate(
         description=description,
         tech_stack=tech_stack,
         features=list(features) if features else None,
@@ -248,7 +282,9 @@ def main(
         is_private=private,
         license_type=license,
         skip_github=skip_github,
-    )
+        llm_model=llm_model,
+        use_ai=not no_ai,
+    ))
 
     sys.exit(0 if result["success"] else 1)
 
